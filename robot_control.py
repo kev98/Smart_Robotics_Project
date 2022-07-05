@@ -1,3 +1,5 @@
+from random import random
+from zlib import DEFLATED
 import sim as vrep # access all the VREP elements
 import sys
 import time
@@ -36,7 +38,6 @@ def pointing_to_goal(pose, initial_pos, goal_pos, tolerance):
         angle_diff = math.atan2(goal_pos[1] - initial_pos[1], goal_pos[0] - initial_pos[0]) - pose[2] + 3*math.pi / 2
     else:
         angle_diff = math.atan2(goal_pos[1] - initial_pos[1], goal_pos[0] - initial_pos[0]) - pose[2] - math.pi / 2
-    print(angle_diff)
     if math.fabs(angle_diff) < tolerance:
         pointing = True
     else:
@@ -53,7 +54,13 @@ def pointing_to_goal(pose, initial_pos, goal_pos, tolerance):
 
 
 def randomness():
-    pass
+    n = random()
+    if n < 0.5:
+        direction = -1 # right rotation
+    else:
+        direction = 1 # left rotation
+    print(direction)
+    return direction
 
 
 # direction 1 --> follow left, direction -1 --> follow right QUUESTA FUNZIONE PROBABILMENTE NON SERVE A NULLA
@@ -81,9 +88,22 @@ def obstacle_detected(direction, dist_fl, dist_rl, dist_fr, dist_rr, dist_obstac
 
     return front, rear
 
+def obstacle_in_front(distance, tolerance):
+    if distance < tolerance:
+        return True
+    else:
+        return False
 
-def follow_obstacle():
-    pass
+def follow_obstacle(lidarHandle, al, ar, direction):
+    dFR = get_distance(lidarHandle[1], 1)
+    dRR = get_distance(lidarHandle[2], 1)
+    dFL = get_distance(lidarHandle[0], 1)
+    dRL = get_distance(lidarHandle[3], 1)
+    a = vrep.simxCheckDistance(clientID, lidarHandle[0], lidarHandle[3], vrep.simx_opmode_streaming)
+    if direction == 1: # left
+        phi = math.atan((dFR-dRR)/a)
+    else:
+        phi = math.atan((dRL-dFL)/a)
 
 
 # return -1 if the robot is in the right side of the line that connects the start and the goal point,
@@ -95,7 +115,6 @@ def line_side():
 # compare position of the robot and the goal to understand if the robot has reached the goal
 def goal_reached(pose, goal_pose, tolerance):
     dist = math.sqrt((goal_pose[0]-pose[0])**2+(goal_pose[1]-pose[1])**2)
-    print(dist)
     return dist<tolerance
     pass
 
@@ -121,6 +140,11 @@ initial_pos = get_robot_pose(robot_ref)
 
 
 _, sensorHandle = vrep.simxGetObjectHandle(clientID, 'Proximity_sensor', vrep.simx_opmode_oneshot_wait)
+lidarHandle = [-1, -1, -1, -1]
+_, lidarHandle[0] = vrep.simxGetObjectHandle(clientID, 'ir_front_left', vrep.simx_opmode_oneshot_wait)
+_, lidarHandle[1] = vrep.simxGetObjectHandle(clientID, 'ir_front_right', vrep.simx_opmode_oneshot_wait)
+_, lidarHandle[2] = vrep.simxGetObjectHandle(clientID, 'ir_rear_right', vrep.simx_opmode_oneshot_wait)
+_, lidarHandle[3] = vrep.simxGetObjectHandle(clientID, 'ir_rear_left', vrep.simx_opmode_oneshot_wait)
 
 '''while 1:
     distance = get_distance(sensorHandle, 1)
@@ -147,10 +171,11 @@ state = 1
 curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0]
 
 while 1:
+    dist = get_distance(sensorHandle, 1)
+    
     pose = get_robot_pose(robot_ref)
     if state == 1:
         is_pointing, dir = pointing_to_goal(pose, initial_pos, flag_pos, 0.05)
-        print(dir)
         if is_pointing:
             state = 2
         else:
@@ -158,8 +183,17 @@ while 1:
     elif state == 2:
         if goal_reached(pose, flag_pos, 0.1):
             state = 6
+        elif obstacle_in_front(dist, 0.5):
+            state = 3
+        elif not is_pointing:
+            state = 1
         else:
             set_velocity(2, 0, 0, wheel_joints_handle)
+    elif state == 3:
+        precompute_turn(0.5, randomness(), wheel_joints_handle)
+        state = 4
+    elif state == 4:
+        set_velocity(2, 0, 0, wheel_joints_handle)
     elif state == 6:
         set_velocity(0, 0, 0, wheel_joints_handle)
 
