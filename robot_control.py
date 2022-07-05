@@ -24,17 +24,18 @@ def get_distance(sensor, max_dist):
         distance = max_dist
     return distance
 
-# NON FUNZIONANO LA SIMXGETOBJECTPOSITION E SIMXGETOBJECTORIENTATION (ritornano sempre [0, 0, 0])
+
 def get_robot_pose(robot):
-    _, position = vrep.simxGetObjectPosition(clientID, robot, -1, vrep.simx_opmode_buffer)
-    _, orientation = vrep.simxGetObjectOrientation(clientID, robot, -1, vrep.simx_opmode_buffer)
-    print(position, orientation)
+    _, position = vrep.simxGetObjectPosition(clientID, robot, -1, vrep.simx_opmode_oneshot_wait)
+    _, orientation = vrep.simxGetObjectOrientation(clientID, robot, -1, vrep.simx_opmode_oneshot_wait)
+    print(robot, position, orientation)
     return [position[0], position[1], orientation[2]]
 
 
 # function that verifies if the robot is pointing to the goal
 def pointing_to_goal(pose, initial_pos, goal_pos, tolerance):
-    angle_diff = math.atan2(goal_pos[2]-initial_pos[2], goal_pos[1]-initial_pos[1])-pose[3]
+    angle_diff = math.atan2(goal_pos[1]-initial_pos[1], goal_pos[0]-initial_pos[0])-pose[2]-math.pi/2
+    print(angle_diff)
     if math.fabs(angle_diff) < tolerance:
         pointing = True
     else:
@@ -91,7 +92,10 @@ def line_side():
 
 
 # compare position of the robot and the goal to understand if the robot has reached the goal
-def goal_reached():
+def goal_reached(pose, goal_pose, tolerance):
+    dist = math.sqrt((goal_pose[0]-pose[0])**2+(goal_pose[1]-pose[1])**2)
+    print(dist)
+    return dist<tolerance
     pass
 
 
@@ -112,8 +116,11 @@ _, wheel_joints_handle[1] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_fr'
 _, wheel_joints_handle[2] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_rr', vrep.simx_opmode_oneshot_wait)
 _, wheel_joints_handle[3] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_rl', vrep.simx_opmode_oneshot_wait)
 
-curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [2, 0, 0]
-set_velocity(forward_back_vel, left_right_vel, rotation_vel, wheel_joints_handle)
+_, robot_ref = vrep.simxGetObjectHandle(clientID, 'youBot_ref', vrep.simx_opmode_oneshot_wait)
+print(_, robot_ref)
+initial_pos = get_robot_pose(robot_ref)
+# initial_pos = get_robot_pose(robotHandle)
+
 
 _, sensorHandle = vrep.simxGetObjectHandle(clientID, 'Proximity_sensor', vrep.simx_opmode_oneshot_wait)
 print('Sensor Handle: ', sensorHandle)
@@ -124,14 +131,41 @@ print('Sensor Handle: ', sensorHandle)
 '''
 
 time.sleep(2)
-set_velocity(0, 0, 2, wheel_joints_handle)
-pose = get_robot_pose(robotHandle)
+# set_velocity(0, 0, 2, wheel_joints_handle)
 
+_, flagHandle = vrep.simxGetObjectHandle(clientID, 'goal', vrep.simx_opmode_oneshot_wait)
+print(flagHandle)
+flag_pos = get_robot_pose(flagHandle)
+print(flag_pos)
+print(initial_pos)
+
+'''
+while 1:
+    pose = get_robot_pose(robot_ref)
+    p, direc = pointing_to_goal(pose, initial_pos, flag_pos, 0.5)
+    print(pose)
+    print(p, direc)
+    time.sleep(1)
+'''
 # fino a qui ci sono delle prove, qua inizia il codice dell'obstacle avoidance
 # initializations
 state = 1
+curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0]
 
+while 1:
+    pose = get_robot_pose(robot_ref)
+    if state == 1:
+        is_pointing, dir = pointing_to_goal(pose, initial_pos, flag_pos, 0.05)
+        if is_pointing:
+            state = 2
+        else:
+            curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0.5]
+    elif state == 2:
+        if goal_reached(pose, flag_pos, 0.1):
+            state = 6
+        else:
+            curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0.5, 0, 0]
+    elif state == 6:
+        curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0]
 
-
-
-
+    set_velocity(forward_back_vel, left_right_vel, rotation_vel, wheel_joints_handle)
