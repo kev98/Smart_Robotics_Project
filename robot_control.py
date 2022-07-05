@@ -19,7 +19,6 @@ def get_distance(sensor, max_dist):
     _, detection_state, detected_point, detected_object_handle, detected_surface_normal_vector = vrep.simxReadProximitySensor(clientID, sensor, vrep.simx_opmode_streaming)
     #_, distance = vrep.simxCheckDistance(clientID, sensor, detected_object_handle, vrep.simx_opmode_streaming)
     distance = math.sqrt(math.pow(detected_point[0], 2) + math.pow(detected_point[1], 2) + math.pow(detected_point[2], 2))
-    print(detected_object_handle, detected_point, distance)
     if detection_state < 1 :
         distance = max_dist
     return distance
@@ -28,13 +27,15 @@ def get_distance(sensor, max_dist):
 def get_robot_pose(robot):
     _, position = vrep.simxGetObjectPosition(clientID, robot, -1, vrep.simx_opmode_oneshot_wait)
     _, orientation = vrep.simxGetObjectOrientation(clientID, robot, -1, vrep.simx_opmode_oneshot_wait)
-    print(robot, position, orientation)
     return [position[0], position[1], orientation[2]]
 
 
 # function that verifies if the robot is pointing to the goal
 def pointing_to_goal(pose, initial_pos, goal_pos, tolerance):
-    angle_diff = math.atan2(goal_pos[1]-initial_pos[1], goal_pos[0]-initial_pos[0])-pose[2]-math.pi/2
+    if goal_pos[1]-initial_pos[1] < 0 and goal_pos[0] - initial_pos[0] < 0:
+        angle_diff = math.atan2(goal_pos[1] - initial_pos[1], goal_pos[0] - initial_pos[0]) - pose[2] + 3*math.pi / 2
+    else:
+        angle_diff = math.atan2(goal_pos[1] - initial_pos[1], goal_pos[0] - initial_pos[0]) - pose[2] - math.pi / 2
     print(angle_diff)
     if math.fabs(angle_diff) < tolerance:
         pointing = True
@@ -56,14 +57,14 @@ def randomness():
 
 
 # direction 1 --> follow left, direction -1 --> follow right QUUESTA FUNZIONE PROBABILMENTE NON SERVE A NULLA
-def precompute_turn(rotation_vel, direction, wheel_joints, b):
+def precompute_turn(rotation_vel, direction, wheel_joints):
     if direction == 1:
         set_velocity(0, 0, -rotation_vel, wheel_joints) # -rotation_vel because I want a left rotation
     if direction == -1:
         set_velocity(0, 0, rotation_vel, wheel_joints)
 
-    t = b*(math.pi/2)/rotation_vel
-    return t
+    # t = b*(math.pi/2)/rotation_vel
+    # return t
 
 
 # function to understand if the robot is near an obstacle
@@ -108,8 +109,6 @@ else:
     sys.exit("Could not connect")
 
 error_code, robotHandle = vrep.simxGetObjectHandle(clientID,'youBot',vrep.simx_opmode_oneshot_wait)
-print(error_code) # se stampa 0 è andato a buon fine
-print(robotHandle)
 wheel_joints_handle = [-1, -1, -1, -1]
 _, wheel_joints_handle[0] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_fl', vrep.simx_opmode_oneshot_wait)
 _, wheel_joints_handle[1] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_fr', vrep.simx_opmode_oneshot_wait)
@@ -117,13 +116,11 @@ _, wheel_joints_handle[2] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_rr'
 _, wheel_joints_handle[3] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_rl', vrep.simx_opmode_oneshot_wait)
 
 _, robot_ref = vrep.simxGetObjectHandle(clientID, 'youBot_ref', vrep.simx_opmode_oneshot_wait)
-print(_, robot_ref)
 initial_pos = get_robot_pose(robot_ref)
 # initial_pos = get_robot_pose(robotHandle)
 
 
 _, sensorHandle = vrep.simxGetObjectHandle(clientID, 'Proximity_sensor', vrep.simx_opmode_oneshot_wait)
-print('Sensor Handle: ', sensorHandle)
 
 '''while 1:
     distance = get_distance(sensorHandle, 1)
@@ -134,10 +131,7 @@ time.sleep(2)
 # set_velocity(0, 0, 2, wheel_joints_handle)
 
 _, flagHandle = vrep.simxGetObjectHandle(clientID, 'goal', vrep.simx_opmode_oneshot_wait)
-print(flagHandle)
 flag_pos = get_robot_pose(flagHandle)
-print(flag_pos)
-print(initial_pos)
 
 '''
 while 1:
@@ -156,16 +150,16 @@ while 1:
     pose = get_robot_pose(robot_ref)
     if state == 1:
         is_pointing, dir = pointing_to_goal(pose, initial_pos, flag_pos, 0.05)
+        print(dir)
         if is_pointing:
             state = 2
         else:
-            curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0.5]
+            precompute_turn(0.5, dir, wheel_joints_handle, )
     elif state == 2:
         if goal_reached(pose, flag_pos, 0.1):
             state = 6
         else:
-            curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0.5, 0, 0]
+            set_velocity(2, 0, 0, wheel_joints_handle)
     elif state == 6:
-        curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0]
+        set_velocity(0, 0, 0, wheel_joints_handle)
 
-    set_velocity(forward_back_vel, left_right_vel, rotation_vel, wheel_joints_handle)
