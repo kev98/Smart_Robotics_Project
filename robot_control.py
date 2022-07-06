@@ -74,17 +74,14 @@ def precompute_turn(rotation_vel, direction, wheel_joints):
 
 
 # function to understand if the robot is near an obstacle
-def obstacle_detected(direction, dist_obstacle, tolerance, lidarHandle):
-    if direction == 1:
-        dF = get_distance(lidarHandle[1], 1)
-        dR = get_distance(lidarHandle[2], 1)
+def obstacle_detected(lidarHandle, tolerance):
+    dF = get_distance(lidarHandle[1], 1)
+    dR = get_distance(lidarHandle[2], 1)
+    print(dF, dR)
+    if math.fabs(dF - dR) < tolerance and dF != 1 and dR != 1:
+        return True
     else:
-        dF = get_distance(lidarHandle[0], 1)
-        dR = get_distance(lidarHandle[3], 1)
-
-    front = math.fabs(dF - dist_obstacle) < tolerance  
-    rear = math.fabs(dR - dist_obstacle) < tolerance
-    return front and rear
+        return False
 
 def obstacle_in_front(distance, tolerance):
     if distance < tolerance:
@@ -108,33 +105,39 @@ def radius_wheels(lidarHandle):
 
     return radius
 
-def follow_obstacle(lidarHandle, dWallSide, direction, kWall, e):
+def follow_obstacle(lidarHandle, direction, pose, wheel_joint):
     dFR = get_distance(lidarHandle[1], 1)
     dRR = get_distance(lidarHandle[2], 1)
     dFL = get_distance(lidarHandle[0], 1)
     dRL = get_distance(lidarHandle[3], 1)
 
-    _, aL = vrep.simxCheckDistance(clientID, lidarHandle[0], lidarHandle[3], vrep.simx_opmode_oneshot_wait)
-    _, aR = vrep.simxCheckDistance(clientID, lidarHandle[1], lidarHandle[2], vrep.simx_opmode_oneshot_wait)
+    _, a = vrep.simxCheckDistance(clientID, lidarHandle[0], lidarHandle[3], vrep.simx_opmode_oneshot_wait)
 
     if direction == 1: # left
-        phi = math.atan((dFR-dRR)/aR)
-        d = 0.5 * (dFR + dRR) - dWallSide
+        dF = dFR
+        dR = dRR
     else:
-        phi = math.atan((dRL-dFL)/aL)
-        d = dWallSide - 0.5 * (dFL + dRL)
+        dF = dFL
+        dR = dRL
+    phi = math.atan((dR-dF) / a) # inclinazione del muro
+    """ if dF - dR < 0 and a < 0:
+        angle_diff = phi - pose[2] + math.pi
+    else: """
+    angle_diff = phi - pose[2] #- math.pi / 2
+    print(angle_diff)
+    if angle_diff > 0:
+        set_velocity(0.4, 0, -0.7, wheel_joint)
+    elif angle_diff == 0:
+        set_velocity(0.8, 0, 0, wheel_joint)
+    else:
+        set_velocity(0.4, 0, 0.7, wheel_joint)
+    
 
-    gamma = d * kWall
-    alpha = phi + gamma
-    radius = radius_wheels(lidarHandle)
-    _, b = vrep.simxCheckDistance(clientID, lidarHandle[0], lidarHandle[3], vrep.simx_opmode_oneshot_wait)
-    b = b / 2
-    v, vL, vR = velocity(0, dist, 1, 2, alpha, b, e)
-    wL = (v / radius) * (math.cos(alpha) + b / e * math.sin(alpha))
-    wR = (v / radius) * (math.cos(alpha) + b / e * math.sin(alpha))
-    return wL, wR, vL, vR
-
-
+def corner_detected(lidarHandle):
+    if get_distance(lidarHandle[1], 1) < 1:
+        return False
+    else:
+        return True
 
 # return -1 if the robot is in the right side of the line that connects the start and the goal point,
 # 1 if is in the left side
@@ -200,39 +203,40 @@ while 1:
 state = 1
 curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0]
 
+r = 1
 while 1:
     dist = get_distance(sensorHandle, 1)
     pose = get_robot_pose(robot_ref)
-    r = randomness()
 
     if state == 1:
         is_pointing, dir = pointing_to_goal(pose, initial_pos, flag_pos, 0.05)
         if is_pointing:
             state = 2
         else:
-            precompute_turn(0.5, dir, wheel_joints_handle, )
+            precompute_turn(2, dir, wheel_joints_handle)
 
     elif state == 2:
         if goal_reached(pose, flag_pos, 0.1):
             state = 6
-        elif obstacle_in_front(dist, 0.5):
+        elif obstacle_in_front(dist, 1):
             state = 3
         elif not is_pointing:
             state = 1
         else:
-            set_velocity(2, 0, 0, wheel_joints_handle)
+            set_velocity(4, 0, 0, wheel_joints_handle)
 
     elif state == 3:
-        precompute_turn(0.5, r, wheel_joints_handle)
-        if obstacle_detected(r, 0.7, 0.5, lidarHandle):
+        set_velocity(0, 0, -0.5, wheel_joints_handle)
+        if obstacle_detected(lidarHandle, 0.05):
             state = 4
 
     elif state == 4:
-        wL, wR, vL, vR = follow_obstacle(lidarHandle, 0.5, r, 0.1, 1)
-        vrep.simxSetJointTargetVelocity(clientID, wheel_joints_handle[0], vL+wL, vrep.simx_opmode_oneshot_wait)
-        vrep.simxSetJointTargetVelocity(clientID, wheel_joints_handle[1], vR+wR, vrep.simx_opmode_oneshot_wait)
-        vrep.simxSetJointTargetVelocity(clientID, wheel_joints_handle[2], vR+wR, vrep.simx_opmode_oneshot_wait)
-        vrep.simxSetJointTargetVelocity(clientID, wheel_joints_handle[3], vL+wL, vrep.simx_opmode_oneshot_wait)
+        set_velocity(2, 0, 0, wheel_joints_handle)
+        if corner_detected(lidarHandle):
+            state = 5
+
+    elif state == 5:
+        set_velocity(1.4, 0, 1, wheel_joints_handle)
 
     elif state == 6:
         set_velocity(0, 0, 0, wheel_joints_handle)
