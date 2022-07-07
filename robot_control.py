@@ -77,7 +77,6 @@ def precompute_turn(rotation_vel, direction, wheel_joints):
 def is_parallel(lidarHandle, tolerance):
     dF = get_distance(lidarHandle[1], 1)
     dR = get_distance(lidarHandle[2], 1)
-    print(dF, dR)
     if math.fabs(dF - dR) < tolerance and dF != 1 and dR != 1:
         return True
     else:
@@ -144,9 +143,17 @@ _, lidarHandle[3] = vrep.simxGetObjectHandle(clientID, 'ir_rear_left', vrep.simx
 
 time.sleep(2)
 # set_velocity(0, 0, 2, wheel_joints_handle)
+flagHandle = []
+flag_pos = []
 
-_, flagHandle = vrep.simxGetObjectHandle(clientID, 'goal', vrep.simx_opmode_oneshot_wait)
-flag_pos = get_robot_pose(flagHandle)
+for i in range(3):
+    name = 'goal' + str(i)
+    print(name)
+    _, flagH = vrep.simxGetObjectHandle(clientID, name, vrep.simx_opmode_oneshot_wait)
+    flagHandle.append(flagH)
+    flagP = get_robot_pose(flagH)
+    flag_pos.append(flagP)
+print(flagHandle, flag_pos)
 
 '''
 while 1:
@@ -158,57 +165,68 @@ while 1:
 '''
 # fino a qui ci sono delle prove, qua inizia il codice dell'obstacle avoidance
 # initializations
-state = 1
-curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0]
 
-r = 1
-while 1:
-    dist = get_distance(sensorHandle, 1)
-    pose = get_robot_pose(robot_ref)
+for i in range(3):
 
-    if state == 1:
-        print(state)
-        is_pointing, dir = pointing_to_goal(pose, initial_pos, flag_pos, 0.03)
-        if is_pointing:
-            state = 2
-        else:
-            precompute_turn(2, dir, wheel_joints_handle)
+    state = 1
+    curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0]
+    r = 1
+    check5 = False
+    while 1:
+        dist = get_distance(sensorHandle, 1)
+        pose = get_robot_pose(robot_ref)
 
-    elif state == 2:
-        print(state)
-        if goal_reached(pose, flag_pos, 0.1):
-            state = 6
-        elif obstacle_in_front(dist, 1):
-            state = 3
-        elif not is_pointing:
-            state = 1
-        else:
-            set_velocity(4, 0, 0, wheel_joints_handle)
+        if state == 1:
+            print(state)
+            is_pointing, dir = pointing_to_goal(pose, initial_pos, flag_pos[i], 0.02)
+            if is_pointing:
+                state = 2
+            else:
+                precompute_turn(1, dir, wheel_joints_handle)
 
-    elif state == 3:
-        print(state)
-        set_velocity(0, 0, -0.5, wheel_joints_handle)
-        if is_parallel(lidarHandle, 0.05):
-            state = 4
+        elif state == 2:
+            print(state)
+            if goal_reached(pose, flag_pos[i], 0.5):
+                state = 6
+            elif obstacle_in_front(dist, 1):
+                state = 3
+            elif not is_pointing:
+                state = 1
+            else:
+                set_velocity(4, 0, 0, wheel_joints_handle)
 
-    elif state == 4:
-        print(state)
-        set_velocity(2, 0, 0, wheel_joints_handle)
-        if corner_detected(lidarHandle):
-            initial_time = vrep.c_GetLastCmdTime(clientID)
-            state = 5
+        elif state == 3:
+            print(state)
+            set_velocity(0, 0, -0.5, wheel_joints_handle)
+            if is_parallel(lidarHandle, 0.05):
+                state = 4
 
-    elif state == 5:
-        print(state)
-        set_velocity(1.7, 0, 1, wheel_joints_handle)
-        curr_orientation = get_robot_pose(robot_ref)[2]
-        if (vrep.c_GetLastCmdTime(clientID)-initial_time)/1000 > 2 :
-            state = 4
-        """if initial_orientation*curr_orientation < 0 and (math.fabs(initial_orientation)-math.fabs(curr_orientation)) < 0.05:
-            state = 4
-        elif initial_orientation*curr_orientation > 0 and math.fabs(initial_orientation-curr_orientation-math.pi/2) < 0.05 :
-            state = 4"""
+        elif state == 4:
+            print(state)
+            set_velocity(2, 0, 0, wheel_joints_handle)
+            if corner_detected(lidarHandle):
+                initial_time = vrep.c_GetLastCmdTime(clientID)
+                state = 5
+            m = math.atan2(flag_pos[i][1]-initial_pos[1], flag_pos[i][0]-initial_pos[0])-math.pi/2
+            print(pose[1] - m * pose[0] - flag_pos[i][1] + m * flag_pos[i][0])
+            if check5 and math.fabs(pose[1]-m*pose[0]-flag_pos[i][1]+m*flag_pos[i][0]) < 0.05:
+                state = 1
+                check5 = False
 
-    elif state == 6:
-        print(state)
-        set_velocity(0, 0, 0, wheel_joints_handle)
+        elif state == 5:
+            print(state)
+            check5 = True
+            set_velocity(1.7, 0, 1, wheel_joints_handle)
+            curr_orientation = get_robot_pose(robot_ref)[2]
+            if (vrep.c_GetLastCmdTime(clientID)-initial_time)/1000 > 2 :
+                state = 4
+            """if initial_orientation*curr_orientation < 0 and (math.fabs(initial_orientation)-math.fabs(curr_orientation)) < 0.05:
+                state = 4
+            elif initial_orientation*curr_orientation > 0 and math.fabs(initial_orientation-curr_orientation-math.pi/2) < 0.05 :
+                state = 4"""
+
+        elif state == 6:
+            print(state)
+            set_velocity(0, 0, 0, wheel_joints_handle)
+            break
+    initial_pos = flag_pos[i]
