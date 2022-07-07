@@ -146,7 +146,7 @@ time.sleep(2)
 flagHandle = []
 flag_pos = []
 
-for i in range(3):
+for i in range(13):
     name = 'goal' + str(i)
     print(name)
     _, flagH = vrep.simxGetObjectHandle(clientID, name, vrep.simx_opmode_oneshot_wait)
@@ -166,7 +166,7 @@ while 1:
 # fino a qui ci sono delle prove, qua inizia il codice dell'obstacle avoidance
 # initializations
 
-for i in range(3):
+for i in range(13):
 
     state = 1
     curr_velocity = [forward_back_vel, left_right_vel, rotation_vel] = [0, 0, 0]
@@ -194,8 +194,12 @@ for i in range(3):
                 state = 1
             else:
                 set_velocity(4, 0, 0, wheel_joints_handle)
-
-        elif state == 3:
+        
+        elif state == 6:
+            print(state)
+            set_velocity(0, 0, 0, wheel_joints_handle)
+            break
+        '''elif state == 3:
             print(state)
             set_velocity(0, 0, -0.5, wheel_joints_handle)
             if is_parallel(lidarHandle, 0.05):
@@ -223,10 +227,7 @@ for i in range(3):
             """if initial_orientation*curr_orientation < 0 and (math.fabs(initial_orientation)-math.fabs(curr_orientation)) < 0.05:
                 state = 4
             elif initial_orientation*curr_orientation > 0 and math.fabs(initial_orientation-curr_orientation-math.pi/2) < 0.05 :
-                state = 4"""
+                state = 4"""'''
 
-        elif state == 6:
-            print(state)
-            set_velocity(0, 0, 0, wheel_joints_handle)
-            break
+        
     initial_pos = flag_pos[i]
