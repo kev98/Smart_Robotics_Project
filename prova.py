@@ -50,10 +50,17 @@ plt.imshow(im, origin='lower')
 plt.show()
 
 emptybuffer = bytearray()
-code, outInt, outFloat, OutString, outBuffer = vrep.simxCallScriptFunction(clientID, "pioneer/Vision_sensor", vrep.sim_scripttype_childscript, 
-        "sysCall_vision", [], [], [], emptybuffer, operationMode=vrep.simx_opmode_oneshot_wait)
+code, outInt, outFloat, OutString, outBuffer = vrep.simxCallScriptFunction(clientID, "pioneer/Vision_sensor", vrep.sim_scripttype_childscript,
+            "legacyRemoteApi_movementDataFunction", [], [], [], emptybuffer, operationMode=vrep.simx_opmode_oneshot)
+
+_, x_target = vrep.simxGetFloatSignal(clientID, "x", vrep.simx_opmode_oneshot_wait)
+_, y_target = vrep.simxGetFloatSignal(clientID, "y", vrep.simx_opmode_oneshot_wait)
+
 print(code)
 print(outInt)
 print(outFloat)
 print(OutString)
 print(outBuffer)
+
+print(x_target)
+print(y_target)
