@@ -53,14 +53,22 @@ emptybuffer = bytearray()
 code, outInt, outFloat, OutString, outBuffer = vrep.simxCallScriptFunction(clientID, "pioneer/Vision_sensor", vrep.sim_scripttype_childscript,
             "legacyRemoteApi_movementDataFunction", [], [], [], emptybuffer, operationMode=vrep.simx_opmode_oneshot)
 
-_, x_target = vrep.simxGetFloatSignal(clientID, "x", vrep.simx_opmode_oneshot_wait)
-_, y_target = vrep.simxGetFloatSignal(clientID, "y", vrep.simx_opmode_oneshot_wait)
+x_upper = 0.5 - 0.03
+x_lower = 0.5 + 0.03
+while 1:
+    _, x_target = vrep.simxGetFloatSignal(clientID, "x", vrep.simx_opmode_oneshot_wait)
+    _, y_target = vrep.simxGetFloatSignal(clientID, "y", vrep.simx_opmode_oneshot_wait)
+    #_, width = vrep.simxGetFloatSignal(clientID, "width", vrep.simx_opmode_oneshot_wait)
 
-print(code)
-print(outInt)
-print(outFloat)
-print(OutString)
-print(outBuffer)
-
-print(x_target)
-print(y_target)
+    print(x_target)
+    print(y_target)
+    if (x_target) <= x_upper:
+        code = vrep.simxSetJointTargetVelocity(clientID, right_wheel_handle, 0.2, vrep.simx_opmode_oneshot_wait)
+        code = vrep.simxSetJointTargetVelocity(clientID, left_wheel_handle, 0, vrep.simx_opmode_oneshot_wait)
+    elif (x_target) >= x_lower:
+        code = vrep.simxSetJointTargetVelocity(clientID, right_wheel_handle, 0, vrep.simx_opmode_streaming)
+        code = vrep.simxSetJointTargetVelocity(clientID, left_wheel_handle, 0.2, vrep.simx_opmode_streaming)
+    else:
+        code = vrep.simxSetJointTargetVelocity(clientID, right_wheel_handle, 0.7, vrep.simx_opmode_oneshot_wait)
+        code = vrep.simxSetJointTargetVelocity(clientID, left_wheel_handle, 0.7, vrep.simx_opmode_oneshot_wait)
+        break
