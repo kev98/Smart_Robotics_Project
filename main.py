@@ -20,6 +20,8 @@ if __name__ == '__main__':
     _, wheel_joints_handle[2] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_rr', vrep.simx_opmode_oneshot_wait)
     _, wheel_joints_handle[3] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_rl', vrep.simx_opmode_oneshot_wait)
 
+    robotUtils.set_velocity(clientID, 0, 0, 0, wheel_joints_handle)
+
     # get the youBot reference frame handle and its pose wrt world frame
     _, robot_ref = vrep.simxGetObjectHandle(clientID, 'youBot_ref', vrep.simx_opmode_oneshot_wait)
     initial_pos = robotUtils.get_pose(clientID, robot_ref)
@@ -31,6 +33,9 @@ if __name__ == '__main__':
     _, lidarHandle[1] = vrep.simxGetObjectHandle(clientID, 'ir_front_right', vrep.simx_opmode_oneshot_wait)
     _, lidarHandle[2] = vrep.simxGetObjectHandle(clientID, 'ir_rear_right', vrep.simx_opmode_oneshot_wait)
     _, lidarHandle[3] = vrep.simxGetObjectHandle(clientID, 'ir_rear_left', vrep.simx_opmode_oneshot_wait)
+
+    # get the vision sensor handle 
+    _, cam_handle = vrep.simxGetObjectHandle(clientID, 'Vision_sensor', vrep.simx_opmode_oneshot_wait)
 
     flagHandle = []
     flag_pos = []
@@ -45,6 +50,9 @@ if __name__ == '__main__':
         flagP = robotUtils.get_pose(clientID, flagH)
         flag_pos.append(flagP)
 
+    x_upper = 0.5 - 0.03
+    x_lower = 0.5 + 0.03
+
     for i in range(num_target):
         # initialization of some useful variables
         state = 1
@@ -53,6 +61,10 @@ if __name__ == '__main__':
         check5 = False
 
         while 1:
+            _, n_blob = vrep.simxGetFloatSignal(clientID, "n_blob", vrep.simx_opmode_oneshot_wait)
+            if n_blob != 0. and state < 8:
+                state = 7
+
             # get the pose of the robot and the detection of something in front of the proximity sensor
             pose = robotUtils.get_pose(clientID, robot_ref)
             dist = robotUtils.get_distance(clientID, sensorHandle, 1)
@@ -87,6 +99,25 @@ if __name__ == '__main__':
                 print(state)
                 robotUtils.set_velocity(clientID, 0, 0, 0, wheel_joints_handle)
                 break
+
+            # state 7: 
+            elif state == 7:
+                print(state, dist)
+                if dist < 0.7:
+                    state = 8
+                _, x_target = vrep.simxGetFloatSignal(clientID, "x", vrep.simx_opmode_oneshot_wait)
+                _, y_target = vrep.simxGetFloatSignal(clientID, "y", vrep.simx_opmode_oneshot_wait)
+                if (x_target) <= x_upper:
+                    robotUtils.set_velocity(clientID, 0, 0, -0.5, wheel_joints_handle)
+                elif (x_target) >= x_lower:
+                    robotUtils.set_velocity(clientID, 0, 0, 0.5, wheel_joints_handle)
+                else:
+                    robotUtils.set_velocity(clientID, 1, 0, 0, wheel_joints_handle)
+
+            elif state == 8:
+                print(state)
+                robotUtils.set_velocity(clientID, 0, 0, 0, wheel_joints_handle)
+                robotVision.shape_detection(clientID, cam_handle, 256)
 
             '''elif state == 3:
                 print(state)
