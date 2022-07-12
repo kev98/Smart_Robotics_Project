@@ -61,6 +61,7 @@ if __name__ == '__main__':
         check5 = False
 
         while 1:
+            vrep.simxSetInt32Signal(clientID, "state8", 0, vrep.simx_opmode_oneshot_wait)
             _, n_blob = vrep.simxGetFloatSignal(clientID, "n_blob", vrep.simx_opmode_oneshot_wait)
             if n_blob != 0. and state < 8:
                 state = 7
@@ -116,8 +117,9 @@ if __name__ == '__main__':
 
             elif state == 8:
                 print(state)
+                vrep.simxSetInt32Signal(clientID, "state8", -1, vrep.simx_opmode_oneshot_wait)
                 robotUtils.set_velocity(clientID, 0, 0, 0, wheel_joints_handle)
-                robotVision.shape_detection(clientID, cam_handle, 256)
+                robotVision.shape_detection(clientID, cam_handle, 224)
 
             '''elif state == 3:
                 print(state)
