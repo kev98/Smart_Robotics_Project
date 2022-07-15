@@ -11,14 +11,17 @@ if __name__ == '__main__':
 
     # start a new connection with the CoppeliaSim environment
     clientID = robotUtils.start_connection(19999)
+    vrep.simxSetInt32Signal(clientID, "state9", 0, vrep.simx_opmode_oneshot_wait)
 
     # get the robot and the wheel handles
     _, robotHandle = vrep.simxGetObjectHandle(clientID, 'youBot', vrep.simx_opmode_oneshot_wait)
+    print(_, robotHandle)
     wheel_joints_handle = [-1, -1, -1, -1]
     _, wheel_joints_handle[0] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_fl', vrep.simx_opmode_oneshot_wait)
     _, wheel_joints_handle[1] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_fr', vrep.simx_opmode_oneshot_wait)
     _, wheel_joints_handle[2] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_rr', vrep.simx_opmode_oneshot_wait)
     _, wheel_joints_handle[3] = vrep.simxGetObjectHandle(clientID, 'rollingJoint_rl', vrep.simx_opmode_oneshot_wait)
+    print(_, wheel_joints_handle)
 
     robotUtils.set_velocity(clientID, 0, 0, 0, wheel_joints_handle)
 
@@ -123,6 +126,7 @@ if __name__ == '__main__':
                 state = 9
 
             elif state == 9:
+                print(state)
                 vrep.simxSetInt32Signal(clientID, "state9", -1, vrep.simx_opmode_oneshot_wait)
 
             '''elif state == 3:
