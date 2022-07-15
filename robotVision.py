@@ -28,4 +28,6 @@ def shape_detection(clientID, camera_handle, image_size):
     plt.imsave('image.jpg', curr_img)
     
     # the actual image currently framed by the vision sensor
-    finetuned_model.predict_shape('image.jpg')
+    predicted_shape = finetuned_model.predict_shape('image.jpg')
+
+    return predicted_shape

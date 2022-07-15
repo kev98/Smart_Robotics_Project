@@ -65,4 +65,5 @@ class FinetunedModel():
         # print("Input Image :")
         plt.imshow(image)
         print("Shape Detected: ", labels[predictions_shape[0].tolist().index(max(predictions_shape[0]))])
+        return labels[predictions_shape[0].tolist().index(max(predictions_shape[0]))]
 
