@@ -123,6 +123,10 @@ if __name__ == '__main__':
                 vrep.simxSetInt32Signal(clientID, "state8", -1, vrep.simx_opmode_oneshot_wait)
                 robotUtils.set_velocity(clientID, 0, 0, 0, wheel_joints_handle)
                 predicted_shape = robotVision.shape_detection(clientID, cam_handle, 224)
+                if predicted_shape == 'cube':
+                    vrep.simxSetStringSignal(clientID, "shape", "cube", vrep.simx_opmode_oneshot_wait)
+                elif predicted_shape == 'spheroid':
+                    vrep.simxSetStringSignal(clientID, "shape", "spheroid", vrep.simx_opmode_oneshot_wait)
                 state = 9
 
             elif state == 9:
