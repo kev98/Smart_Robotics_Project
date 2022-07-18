@@ -1,6 +1,6 @@
 import sim as vrep
 import sys
-import time
+from time import sleep
 import math
 import robotControl
 import robotUtils
@@ -65,6 +65,7 @@ if __name__ == '__main__':
 
         while 1:
             vrep.simxSetInt32Signal(clientID, "state8", 0, vrep.simx_opmode_oneshot_wait)
+            #vrep.simxSetInt32Signal(clientID, "state9", 0, vrep.simx_opmode_oneshot_wait)
             _, n_blob = vrep.simxGetFloatSignal(clientID, "n_blob", vrep.simx_opmode_oneshot_wait)
             if n_blob != 0. and state < 8:
                 state = 7
@@ -106,7 +107,7 @@ if __name__ == '__main__':
 
             # state 7: 
             elif state == 7:
-                print(state, dist)
+                print(state)
                 if dist < 0.7:
                     state = 8
                 _, x_target = vrep.simxGetFloatSignal(clientID, "x", vrep.simx_opmode_oneshot_wait)
@@ -124,7 +125,7 @@ if __name__ == '__main__':
                 robotUtils.set_velocity(clientID, 0, 0, 0, wheel_joints_handle)
                 predicted_shape = robotVision.shape_detection(clientID, cam_handle, 224)
                 if predicted_shape == 'cube':
-                    vrep.simxSetStringSignal(clientID, "shape", "cube", vrep.simx_opmode_oneshot_wait)
+                    vrep.simxSetStringSignal(clientID, "shape", "nill", vrep.simx_opmode_oneshot_wait)
                 elif predicted_shape == 'spheroid':
                     vrep.simxSetStringSignal(clientID, "shape", "spheroid", vrep.simx_opmode_oneshot_wait)
                 state = 9
@@ -132,6 +133,17 @@ if __name__ == '__main__':
             elif state == 9:
                 print(state)
                 vrep.simxSetInt32Signal(clientID, "state9", -1, vrep.simx_opmode_oneshot_wait)
+                _, done = vrep.simxGetInt32Signal(clientID, "done", vrep.simx_opmode_oneshot_wait)
+                if done == 1:
+                    vrep.simxSetInt32Signal(clientID, "state9", 0, vrep.simx_opmode_oneshot_wait)
+                    state = 10
+
+            elif state == 10:
+                print(state)
+                robotUtils.set_velocity(clientID, 0, 0, 0.5, wheel_joints_handle)
+                sleep(40)
+                state = 1
+                
 
             '''elif state == 3:
                 print(state)

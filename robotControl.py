@@ -4,22 +4,37 @@ import robotUtils
 
 # function that verifies if the robot is pointing to the goal
 def pointing_to_goal(pose, initial_pos, goal_pos, tolerance):
-    if goal_pos[1]-initial_pos[1] < 0 and goal_pos[0] - initial_pos[0] < 0:
-        angle_diff = math.atan2(goal_pos[1] - initial_pos[1], goal_pos[0] - initial_pos[0]) - pose[2] + 3*math.pi / 2
+    beta = pose[2]
+    '''if goal_pos[1] - pose[1] < 0 and goal_pos[0] - pose[0] < 0:
+        angle_diff = math.atan2(goal_pos[1] - pose[1], goal_pos[0] - pose[0]) - pose[2] + 3*math.pi / 2
     else:
-        angle_diff = math.atan2(goal_pos[1] - initial_pos[1], goal_pos[0] - initial_pos[0]) - pose[2] - math.pi / 2
+        angle_diff = math.atan2(goal_pos[1] - pose[1], goal_pos[0] - pose[0]) - pose[2] - math.pi / 2'''
+    if beta <= -math.pi/2:
+        beta = beta + 2*math.pi
+    beta = beta + math.pi/2
+    alpha = math.atan2(goal_pos[1] - pose[1], goal_pos[0] - pose[0])
+    if alpha < 0:
+        alpha = alpha + 2*math.pi
+    angle_diff = alpha - beta
+
     if math.fabs(angle_diff) < tolerance:
         pointing = True
     else:
         pointing = False
 
-    if angle_diff > 0:
+    '''if angle_diff > 0:
         # return 1 if a left turn is required
         direction = 1
     else:
         # return -1 if a right turn is required
+        direction = -1'''
+    if (angle_diff > 0 and angle_diff < math.pi) or (angle_diff < -math.pi):
+        direction = 1
+    else: 
         direction = -1
 
+    print('t: (%.4f, %.4f), r: (%.4f, %.4f), a: %.4f, b: %.4f, diff: %.4f' % (goal_pos[0], goal_pos[1], pose[0], pose[1], alpha, beta, angle_diff))
+    print('left' if direction == 1 else 'right')
     return pointing, direction
 
 
