@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     flagHandle = []
     flag_pos = []
-    num_target = 12
+    num_target = 15
 
     # get the flag handles and the flag fixed positions wrt world frame
     for i in range(num_target):
