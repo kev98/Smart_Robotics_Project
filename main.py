@@ -31,11 +31,6 @@ if __name__ == '__main__':
 
     # get the proximity sensor handle and the Lidar sensors handles
     _, sensorHandle = vrep.simxGetObjectHandle(clientID, 'Proximity_sensor', vrep.simx_opmode_oneshot_wait)
-    lidarHandle = [-1, -1, -1, -1]
-    _, lidarHandle[0] = vrep.simxGetObjectHandle(clientID, 'ir_front_left', vrep.simx_opmode_oneshot_wait)
-    _, lidarHandle[1] = vrep.simxGetObjectHandle(clientID, 'ir_front_right', vrep.simx_opmode_oneshot_wait)
-    _, lidarHandle[2] = vrep.simxGetObjectHandle(clientID, 'ir_rear_right', vrep.simx_opmode_oneshot_wait)
-    _, lidarHandle[3] = vrep.simxGetObjectHandle(clientID, 'ir_rear_left', vrep.simx_opmode_oneshot_wait)
 
     # get the vision sensor handle 
     _, cam_handle = vrep.simxGetObjectHandle(clientID, 'Vision_sensor', vrep.simx_opmode_oneshot_wait)
@@ -65,8 +60,8 @@ if __name__ == '__main__':
 
         while 1:
             vrep.simxSetInt32Signal(clientID, "state8", 0, vrep.simx_opmode_oneshot_wait)
-            #vrep.simxSetInt32Signal(clientID, "state9", 0, vrep.simx_opmode_oneshot_wait)
             _, n_blob = vrep.simxGetFloatSignal(clientID, "n_blob", vrep.simx_opmode_oneshot_wait)
+            # check if there is an object pointed by the camera
             if n_blob != 0. and state < 8:
                 state = 7
 
@@ -77,7 +72,7 @@ if __name__ == '__main__':
             # state 1: the robot look for the correct orientation to reach the next target
             if state == 1:
                 print(state)
-                is_pointing, dir = robotControl.pointing_to_goal(pose, initial_pos, flag_pos[i], 0.02)
+                is_pointing, dir = robotControl.pointing_to_goal(pose, flag_pos[i], 0.02)
                 if is_pointing:
                     state = 2
                 else:
@@ -105,7 +100,7 @@ if __name__ == '__main__':
                 robotUtils.set_velocity(clientID, 0, 0, 0, wheel_joints_handle)
                 break
 
-            # state 7: 
+            # state 7: reaching the object detected while keeping the blob in the center of the camera
             elif state == 7:
                 print(state)
                 if dist < 0.7:
@@ -119,6 +114,7 @@ if __name__ == '__main__':
                 else:
                     robotUtils.set_velocity(clientID, 1, 0, 0, wheel_joints_handle)
 
+            # state 8: shape detection
             elif state == 8:
                 print(state)
                 vrep.simxSetInt32Signal(clientID, "state8", -1, vrep.simx_opmode_oneshot_wait)
@@ -131,6 +127,7 @@ if __name__ == '__main__':
                     vrep.simxSetStringSignal(clientID, "shape", "spheroid", vrep.simx_opmode_oneshot_wait)
                 state = 9
 
+            # state 9: pick and place
             elif state == 9:
                 print(state)
                 vrep.simxSetInt32Signal(clientID, "state9", -1, vrep.simx_opmode_oneshot_wait)
@@ -139,42 +136,13 @@ if __name__ == '__main__':
                     vrep.simxSetInt32Signal(clientID, "state9", 0, vrep.simx_opmode_oneshot_wait)
                     state = 10
 
+            # state 10: repositioning in order to return to the current flag
             elif state == 10:
                 print(state)
                 robotUtils.set_velocity(clientID, 0, 0, 0.5, wheel_joints_handle)
-                sleep(20)
+                sleep(15)
                 state = 1
-                
 
-            '''elif state == 3:
-                print(state)
-                set_velocity(0, 0, -0.5, wheel_joints_handle)
-                if is_parallel(lidarHandle, 0.05):
-                    state = 4
-
-            elif state == 4:
-                print(state)
-                set_velocity(2, 0, 0, wheel_joints_handle)
-                if corner_detected(lidarHandle):
-                    initial_time = vrep.c_GetLastCmdTime(clientID)
-                    state = 5
-                m = math.atan2(flag_pos[i][1]-initial_pos[1], flag_pos[i][0]-initial_pos[0])-math.pi/2
-                print(pose[1] - m * pose[0] - flag_pos[i][1] + m * flag_pos[i][0])
-                if check5 and math.fabs(pose[1]-m*pose[0]-flag_pos[i][1]+m*flag_pos[i][0]) < 0.05:
-                    state = 1
-                    check5 = False
-
-            elif state == 5:
-                print(state)
-                check5 = True
-                set_velocity(1.7, 0, 1, wheel_joints_handle)
-                curr_orientation = get_robot_pose(robot_ref)[2]
-                if (vrep.c_GetLastCmdTime(clientID)-initial_time)/1000 > 2 :
-                    state = 4
-                """if initial_orientation*curr_orientation < 0 and (math.fabs(initial_orientation)-math.fabs(curr_orientation)) < 0.05:
-                    state = 4
-                elif initial_orientation*curr_orientation > 0 and math.fabs(initial_orientation-curr_orientation-math.pi/2) < 0.05 :
-                    state = 4"""'''
         # set the new initial pose
         initial_pos = pose
 

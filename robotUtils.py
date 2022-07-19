@@ -32,7 +32,6 @@ def set_velocity(clientID, forward_back_vel, left_right_vel, rotation_vel, wheel
 # get the distance between sensor and the nearest object detected (if there ism't an object detected return max_dist)
 def get_distance(clientID, sensor, max_dist):
     _, detection_state, detected_point, detected_object_handle, detected_surface_normal_vector = vrep.simxReadProximitySensor(clientID, sensor, vrep.simx_opmode_streaming)
-    #_, distance = vrep.simxCheckDistance(clientID, sensor, detected_object_handle, vrep.simx_opmode_streaming)
     distance = math.sqrt(math.pow(detected_point[0], 2) + math.pow(detected_point[1], 2) + math.pow(detected_point[2], 2))
     if detection_state < 1 :
         distance = max_dist
@@ -44,13 +43,3 @@ def get_pose(clientID, object_handle):
     _, position = vrep.simxGetObjectPosition(clientID, object_handle, -1, vrep.simx_opmode_oneshot_wait)
     _, orientation = vrep.simxGetObjectOrientation(clientID, object_handle, -1, vrep.simx_opmode_oneshot_wait)
     return [position[0], position[1], orientation[2]]
-
-
-# get a random direction
-def randomness():
-    n = random()
-    if n < 0.5:
-        direction = -1 # right rotation
-    else:
-        direction = 1 # left rotation
-    return direction
